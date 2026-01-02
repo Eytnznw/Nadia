@@ -7,6 +7,9 @@
     <title>NADIA | מרחב בטוח והחלמה</title>
     <meta name="description" content="נדיה - פלטפורמה מקיפה לתמיכה בנפגעי נרקיסיזם: שאלונים, מילון מושגים, צ'אט AI וקהילה תומכת.">
     
+    <!-- מונע שגיאות 404 על אייקון חסר -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -91,24 +94,47 @@
             color: #881337;
         }
         
-        /* Grid Layout helpers */
         .bento-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 1.5rem;
         }
 
-        /* Checkbox custom style */
         .custom-checkbox:checked {
             background-color: var(--brand-primary);
             border-color: var(--brand-primary);
         }
+        
+        /* Loading Screen */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-family: sans-serif;
+            color: #4f46e5;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="hero-gradient">
+    <!-- מסך טעינה שיופיע עד שהאתר יעלה -->
+    <div id="loading">טוען את נדיה...</div>
     <div id="root"></div>
 
     <script type="text/babel">
+        // הסרת מסך הטעינה כשהריאקט מוכן
+        setTimeout(() => {
+            const loader = document.getElementById('loading');
+            if(loader) loader.style.display = 'none';
+        }, 500);
+
         const { useState, useEffect, createContext, useContext } = React;
 
         // --- Icons ---
@@ -510,139 +536,4 @@
         };
 
         const HomeView = ({ setPage }) => (
-            <div className="reveal-in pt-32 pb-20 px-6 max-w-7xl mx-auto">
-                {/* Hero */}
-                <div className="text-center mb-24">
-                    <h1 className="text-6xl md:text-8xl font-black text-slate-900 mb-8 tracking-tight">להחזיר את <span className="text-indigo-600">השליטה.</span></h1>
-                    <p className="text-xl text-slate-500 max-w-2xl mx-auto mb-10">הפלטפורמה המקיפה ביותר לזיהוי, התמודדות והחלמה ממערכות יחסים נרקיסיסטיות.</p>
-                    <div className="flex justify-center gap-4">
-                        <button onClick={() => setPage('quiz')} className="btn-primary text-white px-8 py-4 rounded-2xl font-bold">אבחון עצמי מהיר</button>
-                        <button onClick={() => setPage('contact')} className="bg-white border px-8 py-4 rounded-2xl font-bold hover:bg-slate-50">יצירת קשר</button>
-                    </div>
-                </div>
-
-                {/* Dashboard Grid */}
-                <div className="bento-grid">
-                    <div onClick={() => setPage('chat')} className="premium-card p-8 rounded-[2.5rem] col-span-1 md:col-span-2 bg-gradient-to-br from-indigo-600 to-purple-700 text-white hover:!transform-none cursor-pointer group relative overflow-hidden">
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-8">
-                                <div className="p-3 bg-white/20 rounded-2xl"><Icon.Zap /></div>
-                                <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold">AI POWERED</span>
-                            </div>
-                            <h3 className="text-3xl font-black mb-2">צ'אט תמיכה חכם</h3>
-                            <p className="text-indigo-100 max-w-md">זמין 24/7 לניתוח הודעות, סימולציות ותרגול הצבת גבולות.</p>
-                        </div>
-                        <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform"></div>
-                    </div>
-
-                    <div onClick={() => setPage('types')} className="premium-card p-8 rounded-[2.5rem] bg-white border-t-4 border-yellow-400">
-                        <h3 className="text-2xl font-bold mb-2">סוגי נרקיסיזם</h3>
-                        <p className="text-slate-500 mb-4">גרנדיוזי? סמוי? פגיע?</p>
-                        <div className="text-indigo-600 font-bold text-sm mt-auto">למדריך המלא -></div>
-                    </div>
-
-                    <div onClick={() => setPage('stories')} className="premium-card p-8 rounded-[2.5rem] bg-slate-900 text-white">
-                        <div className="flex items-center gap-3 mb-4 text-orange-400"><Icon.Users /> קהילה</div>
-                        <h3 className="text-2xl font-bold mb-2">סיפורים אישיים</h3>
-                        <p className="text-slate-400">לקרוא, לשתף, להבין שאתם לא לבד.</p>
-                    </div>
-
-                    <div onClick={() => setPage('contact')} className="premium-card p-8 rounded-[2.5rem] border-t-4 border-green-500">
-                        <div className="flex items-center gap-3 mb-4 text-green-600"><Icon.Shield /> עזרה</div>
-                        <h3 className="text-2xl font-bold mb-2">פנייה דיסקרטית</h3>
-                        <p className="text-slate-500">טופס מאובטח, וואטסאפ וחירום.</p>
-                    </div>
-                </div>
-            </div>
-        );
-
-        const TypesView = () => (
-            <div className="reveal-in pt-32 pb-20 px-6 max-w-5xl mx-auto">
-                <h2 className="text-4xl font-black text-center mb-12">הספקטרום הנרקיסיסטי</h2>
-                <div className="grid md:grid-cols-2 gap-8">
-                    <div className="premium-card p-10 rounded-[2.5rem] border-t-8 border-orange-500">
-                        <h3 className="text-2xl font-black mb-4">הנרקיסיסט הגרנדיוזי</h3>
-                        <ul className="space-y-3 text-slate-600 list-disc pr-5">
-                            <li>מוחצן, כריזמטי, "מסמר המסיבה".</li>
-                            <li>יהיר באופן גלוי, משוויץ בהישגים.</li>
-                            <li>חסר בושה, מרגיש עליונות ברורה.</li>
-                            <li>תוקפני כשמבקרים אותו.</li>
-                        </ul>
-                    </div>
-                    <div className="premium-card p-10 rounded-[2.5rem] border-t-8 border-purple-500">
-                        <h3 className="text-2xl font-black mb-4">הנרקיסיסט הסמוי (פגיע)</h3>
-                        <ul className="space-y-3 text-slate-600 list-disc pr-5">
-                            <li>נראה ביישן, מופנם או רגיש.</li>
-                            <li>מרגיש ש"העולם לא מבין אותו" (קורבן נצחי).</li>
-                            <li>פאסיב-אגרסיבי (שתיקות, רמזים).</li>
-                            <li>רגיש מאוד לביקורת, נוטר טינה בסתר.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        );
-
-        const MainApp = () => {
-            const [page, setPage] = useState('home');
-            const [selectedGuide, setSelectedGuide] = useState(null);
-            const [apiKey] = useState('AIzaSyAekRlMPfrivHyP-NC3SXUGL5kxkAJ3LXE');
-
-            // Panic Button Logic
-            useEffect(() => {
-                const handleEsc = (e) => { if (e.key === 'Escape') window.location.href = "https://www.google.com"; };
-                window.addEventListener('keydown', handleEsc);
-                return () => window.removeEventListener('keydown', handleEsc);
-            }, []);
-
-            const handleSetPage = (newPage) => {
-                setPage(newPage);
-                setSelectedGuide(null);
-                window.scrollTo(0, 0);
-            }
-
-            return (
-                <AppContext.Provider value={{ apiKey }}>
-                    <div className="min-h-screen pb-20">
-                        <Navbar setPage={handleSetPage} activePage={page} />
-                        
-                        <main>
-                            {page === 'home' && <HomeView setPage={handleSetPage} />}
-                            {page === 'features' && <FeaturesView />}
-                            {page === 'chat' && <ChatView />}
-                            {page === 'guides' && !selectedGuide && <GuidesView setViewGuide={setSelectedGuide} />}
-                            {page === 'guides' && selectedGuide && <ArticleView guide={selectedGuide} onBack={() => setSelectedGuide(null)} />}
-                            {page === 'about' && (
-                                <div className="reveal-in py-20 px-6 max-w-4xl mx-auto text-right pt-40">
-                                    <h2 className="text-5xl font-black mb-10 text-slate-900">החזון שלנו</h2>
-                                    <div className="premium-card p-12 rounded-[3rem] text-xl leading-loose text-slate-700 space-y-6">
-                                        <p>אנחנו מאמינים שלכל אדם מגיע להרגיש בטוח בביתו ובעולמו הפנימי. נדיה נוצרה כדי לגשר על הפער שבין "הרגשה שמשהו לא בסדר" לבין "הבנה מוחלטת של המציאות".</p>
-                                        <p>אנחנו משלבים חדשנות טכנולוגית עם אמפתיה אנושית כדי שאתם לעולם לא תרגישו לבד שוב. האתר נבנה מתוך מחקר מעמיק והבנה של הצרכים הייחודיים של המתמודדים עם מערכות יחסים מורכבות.</p>
-                                    </div>
-                                </div>
-                            )}
-                            {page === 'quiz' && <QuizView />}
-                            {page === 'glossary' && <GlossaryView />}
-                            {page === 'resources' && <ResourcesView />}
-                            {page === 'stories' && <StoriesView />}
-                            {page === 'types' && <TypesView />}
-                            {page === 'contact' && <ContactView />}
-                        </main>
-
-                        <button 
-                            onClick={() => window.location.href = "https://www.google.com"}
-                            className="fixed bottom-8 left-8 bg-red-500 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform z-50 group"
-                            title="יציאה מהירה (Esc)"
-                        >
-                            <Icon.Exit />
-                            <span className="absolute left-full ml-4 bg-slate-800 text-white px-3 py-1 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">יציאה מהירה</span>
-                        </button>
-                    </div>
-                </AppContext.Provider>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<MainApp />);
-    </script>
-</body>
-</html>
+            <div className="reveal-in pt-32 pb-20
