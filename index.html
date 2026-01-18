@@ -1,4 +1,742 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NADIA | מרחב בטוח</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1', // Indigo 500
+                        secondary: '#a855f7', // Purple 500
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
+    <style>
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Heebo', sans-serif;
+        }
 
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+        }
 
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Utilities */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 selection:bg-indigo-100 selection:text-indigo-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Config ---
+        const DEFAULT_API_KEY = "AIzaSyCtlVPSL2AfU61qn6gyo8FKPVrv8W1VhDY";
+        const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash";
+        // וודא שקובץ הלוגו נמצא באותה תיקייה בגיט
+        const LOGO_FILENAME = "image_6eb2a7.png"; 
+
+        // --- Icons ---
+        const Icon = ({ name, size = 20, className = "" }) => {
+            // Using Lucide-react style SVG paths directly for performance and no-build-step compatibility
+            const icons = {
+                shield: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />,
+                zap: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />,
+                book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
+                messageCircle: <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
+                logOut: <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></>,
+                home: <><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></>,
+                activity: <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />,
+                heart: <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />,
+                phone: <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+                checkCircle: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></>,
+                alertTriangle: <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>,
+                x: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
+                menu: <><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" /></>,
+                mail: <><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></>,
+                send: <><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></>,
+                trash: <><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></>
+            };
+
+            return (
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width={size} 
+                    height={size} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    className={className}
+                >
+                    {icons[name] || <circle cx="12" cy="12" r="10" />}
+                </svg>
+            );
+        };
+
+        // --- Safety & Utils ---
+        const SafetyGuard = () => {
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.key === 'Escape') {
+                        window.location.replace("https://weather.com");
+                    }
+                };
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, []);
+            return null; 
+        };
+
+        async function geminiGenerate({ apiKey, model, systemInstruction, userText, history }) {
+            const effectiveKey = apiKey || DEFAULT_API_KEY;
+            if (!effectiveKey) throw new Error("Missing API Key");
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(effectiveKey)}`;
+            
+            const contents = history.map(m => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.text }],
+            }));
+            contents.push({ role: "user", parts: [{ text: userText }] });
+
+            const body = {
+                systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined,
+                contents,
+                generationConfig: { temperature: 0.7, maxOutputTokens: 700 },
+            };
+
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+            });
+
+            if (!res.ok) throw new Error(`Error: ${res.status}`);
+            const data = await res.json();
+            return data?.candidates?.[0]?.content?.parts?.[0]?.text || "שגיאה בקבלת תשובה.";
+        }
+
+        // --- Components ---
+
+        const Navbar = ({ activeTab, setActiveTab, onPanic }) => {
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const navItems = [
+                { id: 'dashboard', label: 'ראשי', icon: 'home' },
+                { id: 'chat', label: 'צ׳אט AI', icon: 'messageCircle' },
+                { id: 'quiz', label: 'אבחון', icon: 'activity' },
+                { id: 'glossary', label: 'מילון', icon: 'book' },
+                { id: 'resources', label: 'עזרה', icon: 'heart' },
+                { id: 'contact', label: 'צור קשר', icon: 'mail' },
+            ];
+
+            return (
+                <nav className="glass-nav fixed top-0 w-full z-50 h-16 transition-all duration-300">
+                    <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
+                        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setActiveTab('dashboard')}>
+                            <div className="relative">
+                                <div className="absolute -inset-1 bg-indigo-500 rounded-full opacity-20 group-hover:opacity-40 blur transition duration-200"></div>
+                                <img src={LOGO_FILENAME} alt="N" className="relative h-9 w-auto object-contain" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex'}} />
+                                <div className="hidden w-9 h-9 bg-indigo-600 rounded-lg items-center justify-center text-white font-bold">N</div>
+                            </div>
+                            <span className="font-heebo font-extrabold text-xl text-slate-800 tracking-tight">NADIA</span>
+                        </div>
+
+                        {/* Desktop Nav */}
+                        <div className="hidden md:flex items-center gap-1 bg-slate-100/50 p-1 rounded-xl border border-slate-200/50">
+                            {navItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2
+                                        ${activeTab === item.id 
+                                            ? 'bg-white text-indigo-600 shadow-sm' 
+                                            : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                                >
+                                    <Icon name={item.icon} size={15} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={onPanic}
+                                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg shadow-red-500/30 flex items-center gap-2 transition-all transform active:scale-95 hover:scale-105"
+                            >
+                                <Icon name="logOut" size={16} />
+                                <span className="hidden sm:inline">יציאה</span>
+                            </button>
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
+                                <Icon name={isMenuOpen ? "x" : "menu"} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Mobile Nav */}
+                    {isMenuOpen && (
+                        <div className="md:hidden absolute top-16 left-0 w-full bg-white/95 backdrop-blur-xl border-b border-slate-200 shadow-xl p-4 flex flex-col gap-2 animate-fade-in-up">
+                             {navItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => { setActiveTab(item.id); setIsMenuOpen(false); }}
+                                    className={`p-3 rounded-xl text-right font-medium flex items-center gap-3 transition-colors
+                                        ${activeTab === item.id 
+                                            ? 'bg-indigo-50 text-indigo-700' 
+                                            : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <div className={`p-2 rounded-lg ${activeTab === item.id ? 'bg-white' : 'bg-slate-100'}`}>
+                                        <Icon name={item.icon} size={18} />
+                                    </div>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </nav>
+            );
+        };
+
+        const Dashboard = ({ setActiveTab }) => {
+            return (
+                <div className="space-y-8 animate-fade-in-up pb-10">
+                    {/* Hero Section */}
+                    <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white p-8 md:p-14 shadow-2xl shadow-indigo-200 border border-white/10">
+                        {/* Decorative background shapes */}
+                        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-white/10 blur-3xl"></div>
+                        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 rounded-full bg-purple-500/30 blur-3xl"></div>
+                        
+                        <div className="relative z-10 max-w-3xl">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-xs font-medium mb-6 text-indigo-100">
+                                <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                                זמין אונליין 24/7
+                            </div>
+                            <h1 className="text-4xl md:text-6xl font-black mb-6 leading-tight tracking-tight">
+                                את לא לבד.<br/>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 to-white">אנחנו כאן איתך.</span>
+                            </h1>
+                            <p className="text-indigo-100 text-lg md:text-xl mb-8 max-w-xl leading-relaxed opacity-90">
+                                פלטפורמה דיגיטלית בטוחה, דיסקרטית ומבוססת AI להתמודדות עם מערכות יחסים מורכבות, בניית חוסן והצבת גבולות.
+                            </p>
+                            <div className="flex flex-wrap gap-4">
+                                <button onClick={() => setActiveTab('chat')} className="bg-white text-indigo-600 px-8 py-3.5 rounded-2xl font-bold hover:bg-indigo-50 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1 flex items-center gap-2">
+                                    <Icon name="messageCircle" size={20} />
+                                    התחילי שיחה
+                                </button>
+                                <button onClick={() => setActiveTab('quiz')} className="bg-indigo-800/40 backdrop-blur-md text-white border border-white/20 px-8 py-3.5 rounded-2xl font-bold hover:bg-indigo-800/60 transition flex items-center gap-2">
+                                    <Icon name="activity" size={20} />
+                                    האם הקשר שלי רעיל?
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                            { label: 'דיסקרטיות', val: '100%', icon: 'shield', color: 'text-emerald-500', bg: 'bg-emerald-50' },
+                            { label: 'זמינות', val: '24/7', icon: 'zap', color: 'text-amber-500', bg: 'bg-amber-50' },
+                            { label: 'אנונימיות', val: 'מלאה', icon: 'checkCircle', color: 'text-blue-500', bg: 'bg-blue-50' },
+                            { label: 'טכנולוגיה', val: 'AI', icon: 'activity', color: 'text-purple-500', bg: 'bg-purple-50' },
+                        ].map((stat, idx) => (
+                            <div key={idx} className="glass-card p-5 rounded-2xl flex flex-col items-center text-center border border-white/60">
+                                <div className={`p-3 ${stat.bg} rounded-xl ${stat.color} mb-3 shadow-sm`}>
+                                    <Icon name={stat.icon} size={22} />
+                                </div>
+                                <span className="text-2xl font-extrabold text-slate-800">{stat.val}</span>
+                                <span className="text-xs text-slate-500 font-medium mt-1">{stat.label}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Bento Grid Nav */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div onClick={() => setActiveTab('chat')} className="glass-card p-8 rounded-3xl cursor-pointer md:col-span-2 group relative overflow-hidden border border-indigo-100">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 -mr-10 -mt-10"></div>
+                            <div className="relative z-10 flex flex-col h-full justify-between">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="bg-indigo-100 p-4 rounded-2xl text-indigo-600 shadow-sm group-hover:scale-110 transition-transform duration-300">
+                                        <Icon name="messageCircle" size={28} />
+                                    </div>
+                                    <span className="bg-emerald-100 text-emerald-700 text-xs px-3 py-1 rounded-full font-bold flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> פעיל
+                                    </span>
+                                </div>
+                                <div>
+                                    <h3 className="text-2xl font-bold text-slate-800 mb-2">Nadia AI - היועצת האישית שלך</h3>
+                                    <p className="text-slate-600">שוחחי עם בינה מלאכותית שתעזור לך לנתח הודעות, לפרוק רגשות, או לתרגל הצבת גבולות.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div onClick={() => setActiveTab('quiz')} className="glass-card p-8 rounded-3xl cursor-pointer group border border-rose-100 hover:border-rose-200">
+                            <div className="bg-rose-50 w-14 h-14 rounded-2xl flex items-center justify-center text-rose-500 mb-6 group-hover:bg-rose-100 transition-colors shadow-sm">
+                                <Icon name="alertTriangle" size={28} />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">בדיקת רעילות</h3>
+                            <p className="text-slate-500 text-sm">שאלון קצר המבוסס על סממנים קליניים לבדיקת טיב הקשר.</p>
+                        </div>
+
+                        <div onClick={() => setActiveTab('glossary')} className="glass-card p-8 rounded-3xl cursor-pointer group border border-sky-100 hover:border-sky-200">
+                            <div className="bg-sky-50 w-14 h-14 rounded-2xl flex items-center justify-center text-sky-500 mb-6 group-hover:bg-sky-100 transition-colors shadow-sm">
+                                <Icon name="book" size={28} />
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">מילון מושגים</h3>
+                            <p className="text-slate-500 text-sm">גזלייטינג, הוברינג ועוד - כל מה שצריך לדעת.</p>
+                        </div>
+
+                        <div onClick={() => setActiveTab('resources')} className="glass-card p-8 rounded-3xl cursor-pointer md:col-span-2 group border border-slate-100">
+                             <div className="flex items-center gap-6">
+                                <div className="bg-emerald-50 w-16 h-16 shrink-0 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:bg-emerald-100 transition-colors shadow-sm">
+                                    <Icon name="phone" size={32} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800 mb-1">עזרה דחופה ומשאבים</h3>
+                                    <p className="text-slate-500 text-sm">קווי חירום, עמותות סיוע וטיפים חשובים לבטיחות דיגיטלית ואישית.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ChatInterface = () => {
+            // Load messages from localStorage if available, otherwise default
+            const [messages, setMessages] = useState(() => {
+                const saved = localStorage.getItem('nadia_chat_history');
+                return saved ? JSON.parse(saved) : [
+                    { id: 1, text: "שלום, אני נדיה. אני כאן בשבילך. זהו מרחב בטוח ודיסקרטי.", sender: 'bot', type: 'system' },
+                    { id: 2, text: "איך תרצי שנתקדם היום? אני יכולה להקשיב ולייעץ, או שנוכל לתרגל שיחה קשה בסימולטור.", sender: 'bot' }
+                ];
+            });
+            const [input, setInput] = useState("");
+            const [mode, setMode] = useState("support");
+            const [isTyping, setIsTyping] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            useEffect(() => {
+                // Save messages to localStorage whenever they change
+                localStorage.setItem('nadia_chat_history', JSON.stringify(messages));
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, [messages, isTyping]);
+
+            const clearChat = () => {
+                const defaults = [
+                    { id: Date.now(), text: "השיחה נוקתה. אני כאן מחדש בשבילך.", sender: 'bot', type: 'system' }
+                ];
+                setMessages(defaults);
+                localStorage.setItem('nadia_chat_history', JSON.stringify(defaults));
+            };
+
+            const handleSend = async () => {
+                if (!input.trim()) return;
+                const userMsg = { id: Date.now(), text: input, sender: 'user' };
+                setMessages(prev => [...prev, userMsg]);
+                setInput("");
+                setIsTyping(true);
+
+                try {
+                    const instruction = mode === "support" 
+                        ? "אתה יועץ אמפתי ותומך לנפגעי מערכות יחסים רעילות. תן תשובות קצרות, מחזקות, ובדוק בטיחות. אל תיתן ייעוץ משפטי."
+                        : "אתה משחק תפקיד של 'נרקיסיסט' בסימולציה מתונה. תהיה מניפולטיבי בעדינות (Gaslighting קל) אבל לא אלים. בסוף כל תשובה הוסף שורה: '🧠 תרגול: נסה להציב גבול ברור'.";
+
+                    const replyText = await geminiGenerate({ 
+                        apiKey: DEFAULT_API_KEY, 
+                        model: GEMINI_DEFAULT_MODEL, 
+                        systemInstruction: instruction, 
+                        userText: userMsg.text, 
+                        history: messages 
+                    });
+                    setMessages(prev => [...prev, { id: Date.now()+1, text: replyText, sender: 'bot' }]);
+                } catch (e) {
+                    setMessages(prev => [...prev, { id: Date.now()+1, text: "אופס, הייתה שגיאה בתקשורת. אנא נסי שוב.", sender: 'bot' }]);
+                } finally {
+                    setIsTyping(false);
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-[calc(100vh-140px)] animate-fade-in-up max-w-4xl mx-auto">
+                    <div className="glass-panel p-4 mb-4 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="flex items-center gap-3">
+                             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md ${mode === 'support' ? 'bg-indigo-500' : 'bg-orange-500'}`}>
+                                <Icon name={mode === 'support' ? 'heart' : 'zap'} size={20} />
+                             </div>
+                             <div>
+                                 <span className="font-bold text-slate-800 block">
+                                    {mode === 'support' ? 'מצב תמיכה ואמפתיה' : 'סימולטור אימון'}
+                                 </span>
+                                 <span className="text-xs text-slate-500">
+                                    {mode === 'support' ? 'הבוט מקשיב ומייעץ' : 'הבוט מדמה את הצד השני'}
+                                 </span>
+                             </div>
+                        </div>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <div className="flex bg-slate-100 p-1 rounded-xl flex-1 sm:flex-none">
+                                <button onClick={() => setMode('support')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition ${mode === 'support' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>תמיכה</button>
+                                <button onClick={() => setMode('simulator')} className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition ${mode === 'simulator' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500'}`}>סימולטור</button>
+                            </div>
+                            <button onClick={clearChat} className="p-3 bg-slate-100 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition" title="נקה שיחה">
+                                <Icon name="trash" size={18} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto space-y-4 p-4 glass-panel rounded-t-3xl border-b-0 shadow-inner bg-white/40">
+                        {messages.map((msg) => (
+                            <div key={msg.id} className={`flex w-full ${msg.type === 'system' ? 'justify-center' : ''}`}>
+                                {msg.type === 'system' ? (
+                                    <span className="text-xs text-slate-500 bg-slate-200/50 px-3 py-1 rounded-full border border-slate-200">{msg.text}</span>
+                                ) : (
+                                    <div className={`flex flex-col max-w-[85%] ${msg.sender === 'user' ? 'items-end ml-auto' : 'items-start mr-auto'}`}>
+                                        <div className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                                            msg.sender === 'user' 
+                                            ? 'bg-indigo-600 text-white rounded-br-none' 
+                                            : 'bg-white text-slate-700 rounded-bl-none border border-slate-100'
+                                        }`}>
+                                            {msg.text}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {isTyping && (
+                            <div className="flex w-full">
+                                <div className="bg-white border border-slate-100 px-4 py-3 rounded-2xl rounded-bl-none shadow-sm flex gap-1.5 items-center">
+                                    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+                                    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                                    <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    <div className="p-3 bg-white border-t border-slate-100 rounded-b-3xl flex gap-2 shadow-lg relative z-20">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                            placeholder="הקלידי הודעה..."
+                            className="w-full bg-slate-50 border border-slate-200 px-5 py-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all text-slate-700 placeholder-slate-400"
+                        />
+                        <button 
+                            onClick={handleSend}
+                            disabled={!input.trim() || isTyping}
+                            className="bg-indigo-600 text-white w-14 rounded-xl flex items-center justify-center hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-95"
+                        >
+                            <Icon name="send" size={20} className={input.trim() ? "text-white" : "text-indigo-200"} />
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const Quiz = () => {
+            const [activeQuestion, setActiveQuestion] = useState(0);
+            const [score, setScore] = useState(0);
+            const [finished, setFinished] = useState(false);
+
+            const questions = [
+                "האם את/ה מרגיש/ה שאת/ה הולכ/ת על ביצים ליד בן/בת הזוג?",
+                "האם את/ה חווה שינויים קיצוניים ביחס כלפייך (הרעפת אהבה ואז קרירות מוחלטת)?",
+                "האם גורמים לך לפקפק בזיכרון שלך או בשפיות שלך (Gaslighting)?",
+                "האם יש ניסיון לבודד אותך מחברים או משפחה?",
+                "האם את/ה מרגיש/ה שאת/ה תמיד אשמ/ה, גם כשלא עשית כלום?"
+            ];
+
+            const handleAnswer = (val) => {
+                const next = activeQuestion + 1;
+                setScore(score + val);
+                if (next < questions.length) {
+                    setActiveQuestion(next);
+                } else {
+                    setFinished(true);
+                }
+            };
+
+            return (
+                <div className="max-w-2xl mx-auto pt-4 animate-fade-in-up">
+                    {!finished ? (
+                        <div className="glass-panel p-8 md:p-12 rounded-3xl shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-2 bg-slate-100">
+                                <div className="h-full bg-indigo-500 transition-all duration-500 ease-out" style={{ width: `${((activeQuestion + 1) / questions.length) * 100}%` }}></div>
+                            </div>
+                            
+                            <div className="mb-8 mt-4 text-center">
+                                <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold tracking-wider uppercase rounded-full mb-4">שאלה {activeQuestion + 1} / {questions.length}</span>
+                                <h2 className="text-2xl md:text-3xl font-bold leading-relaxed text-slate-800">{questions[activeQuestion]}</h2>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 gap-4">
+                                <button onClick={() => handleAnswer(2)} className="group p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-between">
+                                    <span className="font-medium text-slate-700 group-hover:text-indigo-700">כן, לעיתים קרובות</span>
+                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500"></div>
+                                </button>
+                                <button onClick={() => handleAnswer(1)} className="group p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-between">
+                                    <span className="font-medium text-slate-700 group-hover:text-indigo-700">לפעמים</span>
+                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500"></div>
+                                </button>
+                                <button onClick={() => handleAnswer(0)} className="group p-4 rounded-xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition-all flex items-center justify-between">
+                                    <span className="font-medium text-slate-700 group-hover:text-indigo-700">לא, אף פעם</span>
+                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-indigo-500"></div>
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="glass-panel p-10 rounded-3xl text-center border-t-8 border-indigo-500 shadow-xl">
+                            <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Icon name="activity" size={40} />
+                            </div>
+                            <h2 className="text-3xl font-bold mb-4 text-slate-800">תוצאות האבחון</h2>
+                            <p className="text-lg text-slate-600 mb-8 leading-relaxed max-w-lg mx-auto">
+                                {score > 6 
+                                    ? "התשובות שלך מצביעות על סימנים מובהקים למערכת יחסים רעילה ואף נרקיסיסטית. חשוב מאוד שתדעי שזו לא אשמתך, ושיש דרך החוצה."
+                                    : "ישנם מספר דגלים אדומים שעלו בתשובותייך. כדאי לשים לב לדינמיקה הזו ולהציב גבולות ברורים."}
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button onClick={() => setFinished(false) || setScore(0) || setActiveQuestion(0)} className="px-6 py-3 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 transition font-medium">התחל מחדש</button>
+                                <button className="px-6 py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition font-bold shadow-lg shadow-indigo-200">קבלת המלצות לפעולה</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const Contact = () => {
+            const [status, setStatus] = useState('idle');
+            
+            return (
+              <div className="max-w-2xl mx-auto animate-fade-in-up">
+                 <div className="glass-panel p-8 rounded-3xl shadow-lg relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                   
+                   <div className="relative z-10">
+                       <div className="flex items-center gap-3 mb-2">
+                           <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                                <Icon name="mail" size={24} />
+                           </div>
+                           <h2 className="text-2xl font-bold text-slate-800">צור קשר דיסקרטי</h2>
+                       </div>
+                       <p className="text-slate-500 mb-8 ml-1">פנייה מאובטחת לצוות האתר. המידע אינו נשמר בשרתים חיצוניים.</p>
+                       
+                       {status === 'success' ? (
+                         <div className="text-center py-12 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                           <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                             <Icon name="checkCircle" size={32} />
+                           </div>
+                           <h3 className="text-xl font-bold text-emerald-900 mb-2">ההודעה נשלחה</h3>
+                           <p className="text-emerald-700/80 mb-6">תודה שפנית אלינו.</p>
+                           <button className="text-sm font-medium text-emerald-600 underline" onClick={() => setStatus('idle')}>שלח הודעה נוספת</button>
+                         </div>
+                       ) : (
+                         <form onSubmit={(e) => { e.preventDefault(); setStatus('submitting'); setTimeout(() => setStatus('success'), 1500); }} className="space-y-5">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                             <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-slate-700">שם (אופציונלי)</label>
+                                <input type="text" className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="אפשר להישאר אנונימי" />
+                             </div>
+                             <div className="space-y-1.5">
+                                <label className="text-sm font-medium text-slate-700">אימייל (אופציונלי)</label>
+                                <input type="email" className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all" placeholder="לקבלת תשובה" />
+                             </div>
+                           </div>
+                           <div className="space-y-1.5">
+                             <label className="text-sm font-medium text-slate-700">ההודעה שלך</label>
+                             <textarea required className="w-full rounded-xl bg-white border border-slate-200 px-4 py-3 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all h-32 resize-none" placeholder="כתוב/כתבי כאן..."></textarea>
+                           </div>
+                           <div className="pt-2">
+                             <button type="submit" disabled={status === 'submitting'} className="bg-purple-600 text-white font-bold py-3.5 px-8 rounded-xl hover:bg-purple-700 transition w-full md:w-auto shadow-lg shadow-purple-200 flex items-center justify-center gap-2">
+                               {status === 'submitting' ? 'שולח...' : <><Icon name="send" size={18}/> שלח הודעה</>}
+                             </button>
+                           </div>
+                         </form>
+                       )}
+                   </div>
+                 </div>
+              </div>
+            );
+        };
+
+        const Glossary = () => (
+            <div className="max-w-5xl mx-auto animate-fade-in-up pb-10">
+                <h2 className="text-3xl font-bold text-slate-800 mb-8 text-center">מילון מושגים</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                        { title: "גזלייטינג (Gaslighting)", desc: "מניפולציה שגורמת לקורבן לפקפק במציאות, בזיכרון או בשפיות שלו." },
+                        { title: "הפצצת אהבה (Love Bombing)", desc: "העפת מחמאות, מתנות ותשומת לב מוגזמת בתחילת הקשר כדי ליצור תלות." },
+                        { title: "הוברינג (Hoovering)", desc: "ניסיונות 'לשאוב' את הקורבן חזרה לקשר אחרי פרידה." },
+                        { title: "קופים מעופפים", desc: "אנשים שהנרקיסיסט מגייס לצדו כדי להפעיל לחץ על הקורבן." },
+                        { title: "טיפול בשתיקה", desc: "התעלמות מוחלטת מהקורבן כעונש או כאמצעי שליטה." },
+                        { title: "השלכה (Projection)", desc: "כשהנרקיסיסט מאשים אותך בתכונות או מעשים שליליים שהוא עצמו עושה." },
+                    ].map((term, i) => (
+                        <div key={i} className="glass-card p-6 rounded-2xl hover:shadow-lg transition-all border-t-4 border-indigo-400">
+                            <h3 className="text-lg font-bold text-slate-800 mb-2">{term.title}</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed">{term.desc}</p>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const Resources = () => (
+            <div className="max-w-3xl mx-auto animate-fade-in-up pb-10 space-y-6">
+                <div className="bg-rose-50 border border-rose-100 p-6 rounded-3xl flex items-start gap-5 shadow-sm">
+                    <div className="p-3 bg-white text-rose-500 rounded-2xl shadow-sm"><Icon name="alertTriangle" size={28} /></div>
+                    <div className="flex-1">
+                        <h3 className="text-xl font-bold text-rose-900 mb-1">מצב חירום?</h3>
+                        <p className="text-rose-700/80 text-sm mb-4">אם את חשה סכנה מיידית, אל תהססי לפנות לעזרה.</p>
+                        <div className="flex flex-wrap gap-3">
+                            <a href="tel:100" className="bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition shadow-lg shadow-rose-200">משטרה 100</a>
+                            <a href="tel:118" className="bg-white text-rose-700 border border-rose-200 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-50 transition">רווחה 118</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="glass-panel p-8 rounded-3xl">
+                    <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                        <span className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Icon name="shield" size={24} /></span>
+                        בטיחות דיגיטלית
+                    </h3>
+                    <ul className="space-y-4">
+                        {[
+                            "מחיקת היסטוריה: השתמשו ב-Ctrl+H למחיקת עקבות.",
+                            "גלישה בסתר: השתמשו תמיד במצב Incognito.",
+                            "סיסמאות: החליפו סיסמאות במכשיר בטוח אם יש חשש למעקב."
+                        ].map((item, i) => (
+                            <li key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition">
+                                <span className="bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0">{i+1}</span>
+                                <span className="text-slate-700 text-sm font-medium">{item}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+        );
+
+        // --- App Root ---
+        const App = () => {
+            // Load initial tab from localStorage or default to dashboard
+            const [activeTab, setActiveTab] = useState(() => localStorage.getItem('nadia_active_tab') || 'dashboard');
+            
+            // Effect to save tab on change
+            useEffect(() => {
+                localStorage.setItem('nadia_active_tab', activeTab);
+            }, [activeTab]);
+            
+            // Background Orbs Animation
+            const Background = () => (
+                <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+                    <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+                    <div className="absolute top-0 right-1/4 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+                    <div className="absolute -bottom-32 left-1/3 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen relative pb-20 md:pb-0">
+                    <Background />
+                    <SafetyGuard />
+                    <Navbar activeTab={activeTab} setActiveTab={setActiveTab} onPanic={() => window.location.href = "https://google.com"} />
+                    
+                    <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12 min-h-screen">
+                        {activeTab === 'dashboard' ? <Dashboard setActiveTab={setActiveTab} /> :
+                         activeTab === 'chat' ? <ChatInterface /> :
+                         activeTab === 'quiz' ? <Quiz /> :
+                         activeTab === 'glossary' ? <Glossary /> :
+                         activeTab === 'resources' ? <Resources /> :
+                         activeTab === 'contact' ? <Contact /> : <Dashboard />}
+                    </main>
+
+                    <footer className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-md border-t border-slate-200 text-slate-400 text-center py-2 text-[10px] z-30 hidden md:block">
+                        האתר מספק מידע ותמיכה ואינו מהווה תחליף לייעוץ מקצועי. במקרה חירום יש לפנות למוקד 100. • גרסה 2.0 (נוספה שמירת היסטוריה)
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
